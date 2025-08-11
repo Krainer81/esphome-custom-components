@@ -1,34 +1,25 @@
-#pragma once
-#include "esphome/core/component.h"
-#include "esphome/components/uart/uart.h"
-#include "esphome/components/text_sensor/text_sensor.h"
+#include "esphome.h"
 
-namespace esphome {
-namespace uart_listener {
-
-class UARTListenerComponent : public Component, public uart::UARTDevice {
+class UARTListenerComponent : public Component, public UARTDevice {
  public:
-  void set_text_sensor(text_sensor::TextSensor *sensor) { this->sensor_ = sensor; }
+  UARTListenerComponent(UARTComponent *parent, TextSensor *text_sensor)
+      : UARTDevice(parent), text_sensor_(text_sensor) {}
 
   void loop() override {
-    while (this->available()) {
-      char c;
-      this->read_byte(&c);
-      if (c == '\n') {
-        if (this->sensor_ != nullptr) {
-          this->sensor_->publish_state(this->buffer_);
+    while (available()) {
+      char c = read();
+      if (c == '\n' || c == '\r') {
+        if (!buffer_.empty()) {
+          text_sensor_->publish_state(buffer_);
+          buffer_.clear();
         }
-        this->buffer_.clear();
       } else {
-        this->buffer_ += c;
+        buffer_ += c;
       }
     }
   }
 
  protected:
-  text_sensor::TextSensor *sensor_{nullptr};
+  TextSensor *text_sensor_;
   std::string buffer_;
 };
-
-}  // namespace uart_listener
-}  // namespace esphome
